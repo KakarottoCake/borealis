@@ -371,8 +371,32 @@ bool Application::mainLoop()
         Application::gamepad.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER] = glfwGetKey(window, GLFW_KEY_R);
     }
 
+    // Translate the left stick into the same navigation events as the D-pad.
+    // GLFW normalizes gamepad axes to [-1, 1]. A dominant-axis dead zone
+    // avoids drift and prevents diagonal input from moving twice in one frame;
+    // the existing button repeat logic below then provides normal held-stick
+    // scrolling without a second timer or input path.
+    constexpr float ANALOG_NAVIGATION_DEAD_ZONE = 0.55f;
+    const float leftX = Application::gamepad.axes[GLFW_GAMEPAD_AXIS_LEFT_X];
+    const float leftY = Application::gamepad.axes[GLFW_GAMEPAD_AXIS_LEFT_Y];
+    if (std::fabs(leftX) >= ANALOG_NAVIGATION_DEAD_ZONE ||
+        std::fabs(leftY) >= ANALOG_NAVIGATION_DEAD_ZONE)
+    {
+        if (std::fabs(leftX) > std::fabs(leftY))
+        {
+            Application::gamepad.buttons[leftX < 0.0f
+                ? GLFW_GAMEPAD_BUTTON_DPAD_LEFT
+                : GLFW_GAMEPAD_BUTTON_DPAD_RIGHT] = GLFW_PRESS;
+        }
+        else
+        {
+            Application::gamepad.buttons[leftY < 0.0f
+                ? GLFW_GAMEPAD_BUTTON_DPAD_UP
+                : GLFW_GAMEPAD_BUTTON_DPAD_DOWN] = GLFW_PRESS;
+        }
+    }
+
     // Trigger gamepad events
-    // TODO: Translate axis events to dpad events here
 
     bool anyButtonPressed               = false;
     bool repeating                      = false;
